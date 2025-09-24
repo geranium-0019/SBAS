@@ -1,0 +1,17 @@
+services:
+  mintpy-isce2:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: mintpy-isce2:cf
+    working_dir: /work
+    tty: true
+    stdin_open: true
+    environment:
+      - TZ=Asia/Tokyo
+    volumes:
+      - ../workdir:/work
+      - /mnt/nas/master/time_series_insar_dir:/mnt/data_storage
+      - ./init.sh:/usr/local/bin/init.sh:ro
+    entrypoint: ["/usr/bin/tini","--","/usr/local/bin/init.sh"]
+
