@@ -1,0 +1,19 @@
+stackSentinel.py \
+  -s /mnt/ssd/sentinel/Jakarta_small/sentinel_images_sparse \
+  -o /mnt/ssd/sentinel/Jakarta_small/sentinel_orbits \
+  -a /mnt/ssd/sentinel/Jakarta_small/AuxDir \
+  -d /mnt/ssd/sentinel/Jakarta_small/DEM/demLat_S07_S05_Lon_E105_E108.dem.wgs84 \
+  -w /mnt/ssd/sentinel/Jakarta_small/run_sparse \
+  -W interferogram \
+  -C NESD \
+  -m 20200302 \
+  -c 2 \
+  -r 9 \
+  -z 3 \
+  -f 0.5 \
+  -e 0.85 \
+  --snr_misreg_threshold 10 \
+  -O 3 \
+  -u snaphu \
+  --num_proc 8 \
+  --num_proc4topo 4

@@ -1,26 +1,25 @@
 {
   "name": "MintPy-ISCE2",
-  "dockerComposeFile": [
-    "./docker-compose.yml"
-  ],
+  "dockerComposeFile": ["./docker-compose.yml"],
   "service": "mintpy-isce2",
   "workspaceFolder": "/work",
 
-  // VS Code 設定
   "settings": {
     "terminal.integrated.defaultProfile.linux": "bash",
     "python.defaultInterpreterPath": "/opt/conda/bin/python",
     "jupyter.jupyterServerType": "local"
   },
 
-  // 自動で入れる VS Code 拡張機能
   "extensions": [
     "ms-python.python",
-    "ms-toolsai.jupyter",
+    "ms-toolsai.jupyter@2025.8.0",{ "name": "MintPy-ISCE2", "dockerComposeFile": [ "./docker-compose.yml" ], "service": "mintpy-isce2", "workspaceFolder": "/work", // VS Code 設定 "settings": { "terminal.integrated.defaultProfile.linux": "bash", "python.defaultInterpreterPath": "/opt/conda/bin/python", "jupyter.jupyterServerType": "local" }, // 自動で入れる VS Code 拡張機能 "extensions": [ "ms-python.python", "ms-toolsai.jupyter@2025.8.0", "ms-python.vscode-pylance", "ms-azuretools.vscode-docker" ], // ユーザー設定 "remoteUser": "gray" }
     "ms-python.vscode-pylance",
     "ms-azuretools.vscode-docker"
   ],
 
-  // ユーザー設定
-  "remoteUser": "gray"
+  "remoteUser": "gray",
+
+  "overrideCommand": false,
+
+  "postCreateCommand": "bash -lc 'chmod +x /usr/local/bin/init.sh 2>/dev/null || true; grep -q \"/usr/local/bin/init.sh\" ~/.bashrc || echo \"source /usr/local/bin/init.sh\" >> ~/.bashrc'"
 }

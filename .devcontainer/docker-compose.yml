@@ -9,9 +9,12 @@ services:
     stdin_open: true
     environment:
       - TZ=Asia/Tokyo
+      - EARTHDATA_USER=${EARTHDATA_USER}
+      - EARTHDATA_PASS=${EARTHDATA_PASS}
     volumes:
       - ../workdir:/work
-      - /mnt/nas/master/time_series_insar_dir:/mnt/data_storage
+      - /mnt/myssd/masters/Jakarta:/mnt/ssd
       - ./init.sh:/usr/local/bin/init.sh:ro
-    entrypoint: ["/usr/bin/tini","--","/usr/local/bin/init.sh"]
+    entrypoint: ["/usr/bin/tini", "--"]
+    command: ["bash", "-lc", "source /usr/local/bin/init.sh"]
 

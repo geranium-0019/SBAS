@@ -3,7 +3,7 @@ FROM condaforge/mambaforge:24.3.0-0
 ENV DEBIAN_FRONTEND=noninteractive TZ=Asia/Tokyo
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    tini git curl ca-certificates vim less && \
+    tini git curl ca-certificates vim nano less unzip && \
     rm -rf /var/lib/apt/lists/*
 
 

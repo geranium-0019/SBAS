@@ -1,1 +1,4 @@
 workdir/tools/__pycache__
+.devcontainer/.env
+
+workdir/out
