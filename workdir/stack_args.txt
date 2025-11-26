@@ -15,5 +15,6 @@ stackSentinel.py \
   --snr_misreg_threshold 10 \
   -O 3 \
   -u snaphu \
+  -b '-6.4584126 -5.7196546 106.427925 107.148735' \
   --num_proc 8 \
   --num_proc4topo 4

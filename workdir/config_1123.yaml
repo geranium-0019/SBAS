@@ -1,0 +1,38 @@
+project:
+  work_dir: /mnt/ssd/sentinel/Jakarta_small/run_sparse    # 作業フォルダ
+  out_dir:  /mnt/ssd/sentinel/Jakarta_small/out           # 任意（パイプライン側で使用可）
+
+data:
+  slc_dir:   /mnt/ssd/sentinel/Jakarta_small/sentinel_images_sparse   # SLC (SAFE/zip)
+  orbit_dir: /mnt/ssd/sentinel/Jakarta_small/sentinel_orbits          # 精密軌道 (-o) ※パス実在を要確認
+  aux_dir:   /mnt/ssd/sentinel/Jakarta_small/AuxDir                   # AUX_EAP 等 (-a)
+  dem:       /mnt/ssd/sentinel/Jakarta_small/DEM/demLat_S07_S05_Lon_E105_E108.dem.wgs84  # DEM (-d)
+
+aoi:
+  swath_num: "2"   # まずは IW2 に固定（"1 2 3" / "1 3" 等も可）
+  # bbox_snwe: [-6.4584126, -5.7196546, 106.427925, 107.148735]   # S N W E（必要になったら有効化）
+
+coreg:
+  method: NESD                 # (-C) 既定: NESD
+  reference_date: "20200302"   # (-m) 既定: None（最初の日付）→ 明示
+  overlap_connections: 3       # (-O) 既定: 3
+  snr_misreg_threshold: 10     # (--snr_misreg_threshold) 既定: 10
+  esd_coh_threshold: 0.85      # (-e) 既定: 0.85
+
+ifgram:
+  workflow: interferogram      # (-W) 既定: interferogram
+  num_connections: 2           # (-c) 既定: 1 → 疎化
+  looks:
+    range: 9                   # (-r) 既定: 9
+    azimuth: 3                 # (-z) 既定: 3
+  filter_strength: 0.5         # (-f) 既定: 0.5
+
+unwrap:
+  method: snaphu               # (-u) 既定: snaphu
+  rm_filter: false             # (--rmFilter) 既定: false
+
+compute:
+  use_gpu: false               # (--useGPU) 既定: false   ← まずは CPU で安定動作確認
+  num_proc: 6                  # (--num_proc) 既定: 1
+  num_proc_topo: 4             # (--num_proc4topo) 既定: 1
+  text_cmd: ""                 # (-t) 行頭に付ける初期化コマンド

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-import argparse, os, sys, shlex, textwrap, pathlib, json
+import argparse, os, sys, shlex, pathlib
 
 try:
     import yaml  # PyYAML
@@ -8,7 +8,6 @@ except Exception as e:
     sys.exit(1)
 
 def q(x: str) -> str:
-    """shell-safe quoting"""
     return shlex.quote(str(x))
 
 def load_cfg(path: str) -> dict:
@@ -23,7 +22,7 @@ def build_stack_cmd(cfg: dict) -> list[str]:
     """Return argv list for stackSentinel.py based on our YAML schema."""
     proj   = cfg.get("project", {})
     data   = cfg.get("data", {})
-    aoi    = cfg.get("aoi", {})
+    aoi    = cfg.get("aoi", {}) or {}
     coreg  = cfg.get("coreg", {})
     ifgram = cfg.get("ifgram", {})
     unwrap = cfg.get("unwrap", {})
@@ -42,11 +41,22 @@ def build_stack_cmd(cfg: dict) -> list[str]:
     # workflow
     cmd += ["-W", ifgram.get("workflow", "interferogram")]
 
+    # AOI: swath / bbox（併用可）
+    swath = aoi.get("swath_num")
+    if swath:
+        cmd += ["-n", str(swath)]
+    bbox = aoi.get("bbox_snwe")
+    if bbox:
+        cmd += ["-b", snwe_to_str(bbox)]
+
     # coreg
     cmd += ["-C", coreg.get("method", "NESD")]
     ref = str(coreg.get("reference_date", "")).strip()
     if ref and ref.lower() != "auto":
         cmd += ["-m", ref]
+    cmd += ["-e", str(coreg.get("esd_coh_threshold", 0.85))]
+    cmd += ["--snr_misreg_threshold", str(coreg.get("snr_misreg_threshold", 10))]
+    cmd += ["-O", str(coreg.get("overlap_connections", 3))]
 
     # pairing / looks / filter
     num_conn = ifgram.get("num_connections", 1)
@@ -56,21 +66,11 @@ def build_stack_cmd(cfg: dict) -> list[str]:
     cmd += ["-z", str(looks.get("azimuth", 3))]
     cmd += ["-f", str(ifgram.get("filter_strength", 0.5))]
 
-    # NESD thresholds
-    cmd += ["-e", str(coreg.get("esd_coh_threshold", 0.85))]
-    cmd += ["--snr_misreg_threshold", str(coreg.get("snr_misreg_threshold", 10))]
-    cmd += ["-O", str(coreg.get("overlap_connections", 3))]
-
     # unwrap
     if unwrap.get("method"):
         cmd += ["-u", unwrap["method"]]
     if unwrap.get("rm_filter", False):
         cmd += ["--rmFilter"]
-
-    # bbox
-    bbox = (aoi or {}).get("bbox_snwe")
-    if bbox:
-        cmd += ["-b", snwe_to_str(bbox)]
 
     # compute
     if comp.get("use_gpu", False):
@@ -85,18 +85,14 @@ def build_stack_cmd(cfg: dict) -> list[str]:
     return cmd
 
 def to_multiline(cmd_argv: list[str]) -> str:
-    """Pretty multi-line shell command with safe quoting.
-    Flags that take a value (e.g., -s PATH) are kept on the same line.
-    """
+    """Pretty multi-line shell command with safe quoting; keep flag+value on same line."""
     qtokens = [q(t) for t in cmd_argv]
 
-    # 1) フラグ+値 を1グループにまとめる
     groups: list[str] = []
     i = 0
     n = len(qtokens)
     while i < n:
         tok = qtokens[i]
-        # 次が存在し、かつ「今のトークンがフラグ」「次がフラグでない」→ 同じ行にまとめる
         if tok.startswith('-') and i + 1 < n and not qtokens[i + 1].startswith('-'):
             groups.append(f"{tok} {qtokens[i + 1]}")
             i += 2
@@ -104,7 +100,6 @@ def to_multiline(cmd_argv: list[str]) -> str:
             groups.append(tok)
             i += 1
 
-    # 2) 見やすい複数行コマンドに整形（行末にバックスラッシュ）
     first = groups[0]
     rest = groups[1:]
     lines = [first + " \\"]
@@ -113,7 +108,6 @@ def to_multiline(cmd_argv: list[str]) -> str:
         end = " \\" if j < len(rest) - 1 else ""
         lines.append(f"{indent}{g}{end}")
     return "\n".join(lines)
-
 
 def main():
     ap = argparse.ArgumentParser(description="Generate stackSentinel.py command from YAML")
@@ -126,20 +120,13 @@ def main():
     cfg_path = pathlib.Path(args.config).resolve()
     cfg = load_cfg(cfg_path)
 
-    # === 出力パスの決め方 ===
-    # --out-sh が絶対パスならそのまま。
-    # 相対パスなら「config.yaml と同じディレクトリ」に作る。
     out_sh_path = pathlib.Path(args.out_sh)
     if not out_sh_path.is_absolute():
         out_sh_path = cfg_path.parent / out_sh_path.name
-
-    # stack_args.txt も run_stack.sh と同じディレクトリに
     out_args_path = out_sh_path.with_name(args.out_args)
-
-    # run_all_runs.sh も run_stack.sh と同じディレクトリに
     run_all_path = out_sh_path.with_name("run_all_runs.sh")
 
-    # sanity checks (existence only warns; let ISCE fail loudly if needed)
+    # sanity checks (warn only)
     missing = []
     for k in ["slc_dir", "orbit_dir", "aux_dir"]:
         p = cfg.get("data", {}).get(k)
@@ -154,17 +141,15 @@ def main():
     cmd_argv = build_stack_cmd(cfg)
     multi = to_multiline(cmd_argv)
 
-    # === write args text (pretty command) ===
+    # args text
     out_args_path.parent.mkdir(parents=True, exist_ok=True)
     with open(out_args_path, "w", encoding="utf-8") as f:
         f.write(multi + "\n")
 
-    # === write runnable run_stack.sh ===
+    # runnable run_stack.sh
     sh_body = f"""#!/usr/bin/env bash
 set -euo pipefail
 # Auto-generated from {q(str(cfg_path))}
-# Edit this file if you need to add environment setup lines.
-
 # Optional: set -x for verbose
 # set -x
 
@@ -175,44 +160,63 @@ set -euo pipefail
         f.write(sh_body)
     os.chmod(out_sh_path, 0o755)
 
-    # === write run_all_runs.sh (run_files/run_* を全部実行) ===
-    run_all_body = """#!/usr/bin/env bash
+    # run_all_runs.sh — ログ保存版
+    run_all_body = r"""#!/usr/bin/env bash
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 RUN_DIR="${SCRIPT_DIR}/run_files"
 
+TS="$(date +%Y%m%d_%H%M%S)"
+LOG_DIR="${SCRIPT_DIR}/logs/${TS}"
+mkdir -p "${LOG_DIR}"
+
+trap 'echo "[ERROR] Failed at step: ${CURRENT_STEP:-unknown}. See logs in ${LOG_DIR}" >&2' ERR
+
 if [ ! -d "$RUN_DIR" ]; then
-  echo "[ERROR] run_files directory not found: $RUN_DIR" >&2
+  echo "[ERROR] run_files directory not found: $RUN_DIR" | tee -a "${LOG_DIR}/run_all.log"
   exit 1
 fi
 
-# run_files/run_* を番号順に実行
 mapfile -t RUN_SCRIPTS < <(find "$RUN_DIR" -maxdepth 1 -type f -name 'run_*' | sort)
 
 if [ "${#RUN_SCRIPTS[@]}" -eq 0 ]; then
-  echo "[ERROR] no run_* scripts found in $RUN_DIR" >&2
+  echo "[ERROR] no run_* scripts found in $RUN_DIR" | tee -a "${LOG_DIR}/run_all.log"
   exit 1
 fi
 
-echo "[INFO] scripts to run:"
+echo "[RUN_DIR] $RUN_DIR" | tee -a "${LOG_DIR}/run_all.log"
+echo "[INFO] scripts to run:" | tee -a "${LOG_DIR}/run_all.log"
 for s in "${RUN_SCRIPTS[@]}"; do
-  echo "  - $(basename "$s")"
+  echo "  - $(basename "$s")" | tee -a "${LOG_DIR}/run_all.log"
 done
-echo
+echo | tee -a "${LOG_DIR}/run_all.log"
 
 i=1
+total="${#RUN_SCRIPTS[@]}"
+
 for s in "${RUN_SCRIPTS[@]}"; do
-  echo "=============================="
-  echo "[STEP $i/${#RUN_SCRIPTS[@]}] $(basename "$s")"
-  echo "=============================="
-  bash "$s"
-  echo "[DONE] $(basename "$s")"
-  echo
+  base="$(basename "$s")"
+  step="${base#run_}"; step="${step%%_*}"
+  CURRENT_STEP="${step}"
+
+  STEP_LOG="${LOG_DIR}/${base}.log"
+  echo "==============================" | tee -a "${LOG_DIR}/run_all.log"
+  echo "[STEP ${i}/${total}] ${base}"    | tee -a "${LOG_DIR}/run_all.log"
+  echo "==============================" | tee -a "${LOG_DIR}/run_all.log"
+
+  {
+    echo "[START] $(date '+%F %T')  ${base}"
+    time bash "$s"
+    echo "[END]   $(date '+%F %T')  ${base}"
+  } 2>&1 | tee -a "${STEP_LOG}" | tee -a "${LOG_DIR}/run_all.log" >/dev/null
+
+  echo "[DONE] ${base}" | tee -a "${LOG_DIR}/run_all.log"
+  echo | tee -a "${LOG_DIR}/run_all.log"
   ((i++))
 done
 
-echo "[ALL DONE] all run_* scripts finished."
+echo "[ALL DONE] all run_* scripts finished. Logs: ${LOG_DIR}" | tee -a "${LOG_DIR}/run_all.log"
 """
     with open(run_all_path, "w", encoding="utf-8") as f:
         f.write(run_all_body)

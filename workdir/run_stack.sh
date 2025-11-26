@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
-# Auto-generated from config_1114.yaml
+# Auto-generated from /work/config_1123.yaml
 # Edit this file if you need to add environment setup lines.
 
 # Optional: set -x for verbose
@@ -23,5 +23,6 @@ stackSentinel.py \
   --snr_misreg_threshold 10 \
   -O 3 \
   -u snaphu \
+  -b '-6.4584126 -5.7196546 106.427925 107.148735' \
   --num_proc 8 \
   --num_proc4topo 4

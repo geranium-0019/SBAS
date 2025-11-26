@@ -34,6 +34,7 @@ def make_cumdisp_gif(
     fps: int = 5,
     ref: str = "first",           # "first" or "date"
     ref_date: str | None = None,  # "YYYYMMDD" when ref=="date"
+    start_date: str | None = None,  # "YYYYMMDD": ignore dates before this
     wrap: bool = False,
     wrap_range: tuple[float, float] = (-np.pi, np.pi),
     figsize: tuple[float, float] = (6, 4),
@@ -65,6 +66,8 @@ def make_cumdisp_gif(
         Reference policy: first acquisition or a specific date.
     ref_date : str | None
         "YYYYMMDD" if ref == "date".
+    start_date : str | None
+        "YYYYMMDD": frames before this date are excluded.
     wrap : bool
         Phase wrap display (not typical for displacement).
     wrap_range : (float,float)
@@ -79,9 +82,18 @@ def make_cumdisp_gif(
         Hide axes/frames for clean map.
     """
     # 1) Read meta + date list
-    obj = TsObj(ts_file); obj.open(print_msg=False)
+    obj = TsObj(ts_file)
+    obj.open(print_msg=False)
     date_list = obj.dateList[:]                 # ['YYYYMMDD', ...]
-    dates, _  = ptime.date_list2vector(date_list)
+
+    # --- start_date でトリミング ---
+    if start_date is not None:
+        if start_date not in date_list:
+            raise ValueError(f"start_date={start_date} が timeseries 内にありません。")
+        start_idx = date_list.index(start_date)
+        date_list = date_list[start_idx:]
+
+    dates, _ = ptime.date_list2vector(date_list)
     atr = readfile.read_attribute(ts_file)
 
     # 2) Read 3D stack (num_date, length, width)
@@ -89,6 +101,7 @@ def make_cumdisp_gif(
 
     # 3) Reference to first / specific date
     if ref == "first":
+        # 先頭（start_date が指定されていれば start_date）が基準
         data = data - data[0, :, :]
         ref_str = dates[0].strftime("%Y-%m-%d")
     elif ref == "date":
@@ -119,7 +132,9 @@ def make_cumdisp_gif(
             vlim = (vmin, vmax)
         else:
             # MintPy auto (robust-ish)
-            vlim = pp.auto_adjust_colormap_lut_and_disp_limit(data, num_multilook=10, print_msg=False)[1]
+            vlim = pp.auto_adjust_colormap_lut_and_disp_limit(
+                data, num_multilook=10, print_msg=False
+            )[1]
 
     # TwoSlopeNorm if symmetric around 0 (nice for subsidence/upheaval)
     use_two_slope = (vlim[0] < 0 < vlim[1]) and np.isclose(abs(vlim[0]), abs(vlim[1]), rtol=0.1, atol=0.0)
@@ -133,8 +148,14 @@ def make_cumdisp_gif(
         if wrap:
             img = ut.wrap(img, wrap_range=wrap_range)
 
-        fig, ax = plt.subplots(figsize=figsize)
-        im = ax.imshow(img, cmap=cmap_name, vmin=None if norm else vlim[0], vmax=None if norm else vlim[1], norm=norm)
+        fig, ax = plt.subplots(figsize=figsize, dpi=dpi)
+        im = ax.imshow(
+            img,
+            cmap=cmap_name,
+            vmin=None if norm else vlim[0],
+            vmax=None if norm else vlim[1],
+            norm=norm,
+        )
         if hide_axes:
             ax.set_axis_off()
 
@@ -143,14 +164,17 @@ def make_cumdisp_gif(
 
         if add_colorbar:
             cbar = fig.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
-            label = ('Amplitude' if atr.get('DATA_TYPE','').startswith('complex') else 'Displacement')
+            label = 'Amplitude' if atr.get('DATA_TYPE', '').startswith('complex') else 'Displacement'
             cbar.set_label(f"{label} [{disp_unit_out}]", fontsize=9)
 
         fig.tight_layout()
         # Render to array (no temp files)
         fig.canvas.draw()
-        frame = np.frombuffer(fig.canvas.tostring_rgb(), dtype=np.uint8)
-        frame = frame.reshape(fig.canvas.get_width_height()[::-1] + (3,))
+        # Get RGBA buffer and drop alpha channel
+        w, h = fig.canvas.get_width_height()
+        buf = np.frombuffer(fig.canvas.buffer_rgba(), dtype=np.uint8)
+        buf = buf.reshape(h, w, 4)
+        frame = buf[:, :, :3].copy()  # keep RGB only
         frames.append(frame)
         plt.close(fig)
 
@@ -163,22 +187,23 @@ def _parse_cli(argv=None):
     p.add_argument("ts_file")
     p.add_argument("out_gif")
     p.add_argument("--mask-file", default=None)
-    p.add_argument("--disp-unit", default="cm", choices=["cm","mm","m","radian"])
+    p.add_argument("--disp-unit", default="cm", choices=["cm", "mm", "m", "radian"])
     p.add_argument("--cmap", default="RdBu_r")
     p.add_argument("--fps", type=int, default=5)
-    p.add_argument("--ref", default="first", choices=["first","date"])
+    p.add_argument("--ref", default="first", choices=["first", "date"])
     p.add_argument("--ref-date", default=None, help="YYYYMMDD (use with --ref date)")
+    p.add_argument("--start-date", default=None, help="YYYYMMDD: ignore dates before this")  # ★ 追加
     p.add_argument("--wrap", action="store_true")
-    p.add_argument("--wrap-range", nargs=2, type=float, default=[-np.pi, np.pi], metavar=("MIN","MAX"))
-    p.add_argument("--figsize", nargs=2, type=float, default=[6,4], metavar=("W","H"))
+    p.add_argument("--wrap-range", nargs=2, type=float, default=[-np.pi, np.pi], metavar=("MIN", "MAX"))
+    p.add_argument("--figsize", nargs=2, type=float, default=[6, 4], metavar=("W", "H"))
     p.add_argument("--dpi", type=int, default=120)
     p.add_argument("--no-colorbar", dest="add_colorbar", action="store_false")
     p.add_argument("--show-axes", dest="hide_axes", action="store_false")
 
     # vlim options (mutually exclusive: fixed vs percentile vs auto)
     group = p.add_mutually_exclusive_group()
-    group.add_argument("--vlim", nargs=2, type=float, metavar=("MIN","MAX"))
-    group.add_argument("--vlim-percentile", nargs=2, type=float, metavar=("PLOW","PHIGH"))
+    group.add_argument("--vlim", nargs=2, type=float, metavar=("MIN", "MAX"))
+    group.add_argument("--vlim-percentile", nargs=2, type=float, metavar=("PLOW", "PHIGH"))
 
     args = p.parse_args(argv)
     return args
@@ -197,6 +222,7 @@ def _main(argv=None):
         fps=args.fps,
         ref=args.ref,
         ref_date=args.ref_date,
+        start_date=args.start_date,
         wrap=args.wrap,
         wrap_range=tuple(args.wrap_range),
         figsize=tuple(args.figsize),
