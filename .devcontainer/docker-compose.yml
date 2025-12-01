@@ -13,7 +13,7 @@ services:
       - EARTHDATA_PASS=${EARTHDATA_PASS}
     volumes:
       - ../workdir:/work
-      - /mnt/sd/masters/Jakarta:/mnt/ssd
+      - /mnt/sbas/masters/Jakarta:/mnt/ssd
       - ./init.sh:/usr/local/bin/init.sh:ro
     entrypoint: ["/usr/bin/tini", "--"]
     command: ["bash", "-lc", "source /usr/local/bin/init.sh"]
