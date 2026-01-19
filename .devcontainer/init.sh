@@ -11,7 +11,7 @@ except Exception as e:
 PY
 )
 if [ -z "${ISCE_HOME}" ]; then
-  echo "[init] ⚠ isce (conda-forge) が見つかりません。conda envを確認してください。"
+  echo "[init] ⚠ isce (conda-forge) not found. Please check your conda environment."
 else
   export ISCE_HOME
 fi
@@ -52,15 +52,17 @@ ensure_netrc () {
     return
   fi
   # .env から生成（ある場合のみ）
+  # EARTHDATA credentials (from .env)
   if [ -n "${EARTHDATA_USER:-}" ] && [ -n "${EARTHDATA_PASS:-}" ]; then
     {
       echo "machine urs.earthdata.nasa.gov login ${EARTHDATA_USER} password ${EARTHDATA_PASS}"
     } > "$NETRC"
   fi
-  if [ -n "${CDSE_USER:-}" ] && [ -n "${CDSE_PASS:-}" ]; then
+  # Copernicus Data Space Ecosystem credentials (from .env)
+  if [ -n "${COPERNICUS_USER:-}" ] && [ -n "${COPERNICUS_PASSWORD:-}" ]; then
     {
-      echo "machine dataspace.copernicus.eu login ${CDSE_USER} password ${CDSE_PASS}"
-      echo "machine zipper.dataspace.copernicus.eu login ${CDSE_USER} password ${CDSE_PASS}"
+      echo "machine dataspace.copernicus.eu login ${COPERNICUS_USER} password ${COPERNICUS_PASSWORD}"
+      echo "machine zipper.dataspace.copernicus.eu login ${COPERNICUS_USER} password ${COPERNICUS_PASSWORD}"
     } >> "$NETRC"
   fi
   if [ -f "$HOME/.netrc.ro" ] && [ ! -s "$NETRC" ]; then
@@ -70,7 +72,7 @@ ensure_netrc () {
     chmod 600 "$NETRC"
     echo "[init] ✅ ~/.netrc ready"
   else
-    echo "[init] ⚠ 認証未設定（.env で EARTHDATA_*/CDSE_* を渡すか ~/.netrc.ro をマウント）"
+    echo "[init] ⚠ Auth not set (.env with EARTHDATA_*/COPERNICUS_* or mount ~/.netrc.ro)"
   fi
 }
 ensure_netrc
@@ -92,7 +94,7 @@ export PROJ_NETWORK=ON
 
 # ===== Logs =====
 echo
-echo "[init] ✅ ISCE2/MintPy env ready."
+echo "[init] ✅ ISCE2/MintPy environment ready."
 echo "[init] ISCE_HOME = ${ISCE_HOME:-<not found>}"
 echo "[init] ISCE_SRC  = $ISCE_SRC"
 echo "[init] PATH      = $PATH"

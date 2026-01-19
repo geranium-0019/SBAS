@@ -1,5 +1,5 @@
 services:
-  mintpy-isce2:
+  app:
     build:
       context: .
       dockerfile: Dockerfile
@@ -7,14 +7,18 @@ services:
     working_dir: /work
     tty: true
     stdin_open: true
+    env_file:
+      - .env
     environment:
       - TZ=Asia/Tokyo
       - EARTHDATA_USER=${EARTHDATA_USER}
       - EARTHDATA_PASS=${EARTHDATA_PASS}
+      - COPERNICUS_USER=${COPERNICUS_USER}
+      - COPERNICUS_PASSWORD=${COPERNICUS_PASSWORD}
+    # volumes: 各自の環境に合わせてパスを調整してください / Adjust paths to your local environment as needed
     volumes:
-      - ../workdir:/work
-      - /mnt/sbas/masters/Jakarta:/mnt/ssd
-      - ./init.sh:/usr/local/bin/init.sh:ro
+      - ../workdir:/work  # プロジェクト作業ディレクトリ / Project working directory
+      - /mnt/sd_sbas/masters/Jakarta:/mnt/ssd  # 必要に応じて変更 / Change as needed
+      - ./init.sh:/usr/local/bin/init.sh:ro  # 初期化スクリプト（必要に応じて）/ Init script (if needed)
     entrypoint: ["/usr/bin/tini", "--"]
     command: ["bash", "-lc", "source /usr/local/bin/init.sh"]
-

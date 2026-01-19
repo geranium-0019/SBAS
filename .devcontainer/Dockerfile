@@ -5,19 +5,28 @@ ENV DEBIAN_FRONTEND=noninteractive TZ=Asia/Tokyo
 RUN apt-get update && apt-get install -y --no-install-recommends \
     tini git curl ca-certificates vim nano less unzip && \
     rm -rf /var/lib/apt/lists/*
-
+    
 
 RUN mamba install -y -c conda-forge \
     python=3.10 \
-    isce2 \
-    mintpy \
-    snaphu \
-    gdal proj \
-    numpy scipy h5py cython pandas xarray dask \
-    matplotlib ipykernel ipywidgets jupyterlab \
-    geopandas \
+    isce2=2.6.4 \
+    mintpy=1.6.2 \
+    snaphu=0.4.1 \
+    gdal=3.10.3 proj \
+    numpy=1.26.4 \
+    scipy=1.15.2 \
+    h5py=3.14.0 \
+    cython=3.1.4 \
+    pandas=2.3.3 \
+    xarray=2025.6.1 \
+    dask=2025.9.1 \
+    matplotlib=3.10.6 \
+    ipykernel=6.30.1 \
+    ipywidgets=8.1.7 \
+    jupyterlab=4.4.9 \
+    geopandas=1.1.1 \
  && mamba clean -afy \
- && pip install --no-cache-dir data_downloader
+ && pip install --no-cache-dir data_downloader==1.2
 
 
 
