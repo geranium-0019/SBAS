@@ -1,5 +1,4 @@
 workdir/tools/__pycache__
-.devcontainer/.env
-
+.env
 workdir/out
 workdir/.copernicus_dataspace_token

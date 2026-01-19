@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # ===============================================================
-# Time Series InSAR - クイックセットアップスクリプト
+#SBASクイックセットアップスクリプト
 # ===============================================================
 # 
 # ISCE2 + MintPy環境を簡単にセットアップするためのスクリプト
@@ -86,7 +86,7 @@ check_docker() {
 setup_env_file() {
     log_step ".envファイルの設定..."
     
-    if [ ! -f .env ]; then
+        if [ ! -f ./env ]; then
         log_info ".envファイルを作成中..."
         
         echo "# ===============================================" > .env
@@ -233,19 +233,19 @@ prepare_docker_env() {
     log_step "Docker環境の準備中..."
     
     # docker-compose.yml が存在するかチェック
-    if [ ! -f .devcontainer/docker-compose.yml ]; then
-        log_error ".devcontainer/docker-compose.yml が見つかりません"
+        if [ ! -f ./docker-compose.yml ]; then
+        log_error "docker-compose.yml が見つかりません"
         exit 1
     fi
-    
+
     # イメージをビルド（初回のみ）
     log_info "Dockerイメージをビルド中... (初回は時間がかかります)"
     if command -v docker-compose &> /dev/null; then
-        cd .devcontainer && docker-compose build && cd ..
+        docker-compose build
     else
-        cd .devcontainer && docker compose build && cd ..
+        docker compose build
     fi
-    
+
     log_success "Docker環境が準備できました"
 }
 
@@ -289,7 +289,7 @@ show_usage() {
     echo -e "${WHITE}===============================================================${NC}"
 }
 
-# メイン実行
+## Note: .env, Dockerfile, docker-compose.yml should be placed in the project root (../)
 main() {
     show_banner
     
