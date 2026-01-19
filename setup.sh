@@ -1,17 +1,17 @@
 #!/bin/bash
 
 # ===============================================================
-#SBASクイックセットアップスクリプト
+# Time Series InSAR - Quick Setup Script
 # ===============================================================
 # 
-# ISCE2 + MintPy環境を簡単にセットアップするためのスクリプト
-# 使用法: ./setup.sh
+# Script for quick setup of ISCE2 + MintPy environment
+# Usage: ./setup.sh
 #
 # ===============================================================
 
 set -euo pipefail
 
-# カラー定義
+# Color definitions
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
@@ -21,109 +21,96 @@ CYAN='\033[0;36m'
 WHITE='\033[1;37m'
 NC='\033[0m' # No Color
 
-# ログ関数
+# Logging functions
 log_info() { echo -e "${BLUE}ℹ [INFO]${NC} $1"; }
 log_success() { echo -e "${GREEN}✅ [SUCCESS]${NC} $1"; }
 log_warn() { echo -e "${YELLOW}⚠ [WARN]${NC} $1"; }
 log_error() { echo -e "${RED}❌ [ERROR]${NC} $1"; }
 log_step() { echo -e "${PURPLE}🔄 [STEP]${NC} $1"; }
 
-# banner
+# Banner
 show_banner() {
     echo -e "${CYAN}"
     echo "================================================================"
-    echo "    Time Series InSAR - クイックセットアップ"
+    echo "    Time Series InSAR - Quick Setup"
     echo "    ISCE2 + MintPy + Sentinel-1 Pipeline"
     echo "================================================================"
     echo -e "${NC}"
 }
 
-# 必須コマンドの確認
+# Check required commands
 check_requirements() {
-    log_step "必須コマンドの確認中..."
-    
+    log_step "Checking required commands..."
     local missing=()
-    
     if ! command -v docker &> /dev/null; then
         missing+=("docker")
     fi
-    
     if ! command -v docker-compose &> /dev/null && ! docker compose version &> /dev/null; then
-        missing+=("docker-compose または docker compose")
+        missing+=("docker-compose or docker compose")
     fi
-    
     if [ ${#missing[@]} -ne 0 ]; then
-        log_error "以下のコマンドが見つかりません:"
+        log_error "Missing commands:"
         for cmd in "${missing[@]}"; do
             echo "  - $cmd"
         done
         echo
-        echo "インストール方法:"
+        echo "How to install:"
         echo "  Docker: https://docs.docker.com/get-docker/"
         echo "  Docker Compose: https://docs.docker.com/compose/install/"
         exit 1
     fi
-    
-    log_success "必須コマンドが確認できました"
+    log_success "All required commands are available."
 }
 
-# Dockerデーモンの確認
+# Check Docker daemon
 check_docker() {
-    log_step "Docker環境の確認中..."
-    
+    log_step "Checking Docker daemon..."
     if ! docker info &> /dev/null; then
-        log_error "Dockerデーモンが起動していません"
-        log_info "以下のコマンドでDockerを起動してください:"
+        log_error "Docker daemon is not running."
+        log_info "Start Docker with:"
         echo "  sudo systemctl start docker  # Linux"
-        echo "  または Docker Desktopを起動  # Windows/Mac"
+        echo "  Or start Docker Desktop  # Windows/Mac"
         exit 1
     fi
-    
-    log_success "Docker環境が利用可能です"
+    log_success "Docker is available."
 }
 
-# .envファイルの設定
+# Setup .env file
 setup_env_file() {
-    log_step ".envファイルの設定..."
-    
-        if [ ! -f ./env ]; then
-        log_info ".envファイルを作成中..."
-        
+    log_step "Setting up .env file..."
+    if [ ! -f .env ]; then
+        log_info "Creating .env file..."
         echo "# ===============================================" > .env
-        echo "# 認証情報設定" >> .env
+        echo "# Authentication settings" >> .env
         echo "# ===============================================" >> .env
         echo "" >> .env
-        echo "# NASA Earthdata 認証情報" >> .env
-        echo "# https://urs.earthdata.nasa.gov/ でアカウント登録" >> .env
+        echo "# NASA Earthdata credentials" >> .env
+        echo "# Register at https://urs.earthdata.nasa.gov/" >> .env
         echo "EARTHDATA_USER=your_username" >> .env
         echo "EARTHDATA_PASS=your_password" >> .env
         echo "" >> .env
-        echo "# Copernicus Dataspace 認証情報 (オプション)" >> .env
+        echo "# Copernicus Dataspace credentials (optional)" >> .env
         echo "# https://dataspace.copernicus.eu/" >> .env
-        echo "CDSE_USER=your_cdse_username" >> .env
-        echo "CDSE_PASS=your_cdse_password" >> .env
+        echo "COPERNICUS_USER=your_copernicus_username" >> .env
+        echo "COPERNICUS_PASSWORD=your_copernicus_password" >> .env
         echo "" >> .env
-        
-        log_success ".envファイルを作成しました"
-        log_warn "EARTHDATA_USER と EARTHDATA_PASS を .env ファイルで設定してください"
-        
-        read -p "今すぐ .env ファイルを編集しますか? (y/N): " edit_env
+        log_success ".env file created."
+        log_warn "Please set EARTHDATA_USER and EARTHDATA_PASS in your .env file."
+        read -p "Edit .env file now? (y/N): " edit_env
         if [[ $edit_env =~ ^[Yy]$ ]]; then
             if command -v nano &> /dev/null; then
                 nano .env
             elif command -v vim &> /dev/null; then
                 vim .env
             else
-                log_info ".env ファイルをお好みのエディタで編集してください："
+                log_info "Please edit .env file with your preferred editor:"
                 echo "  $(pwd)/.env"
             fi
         fi
     else
-        log_success ".envファイルは既に存在します"
-        
-        # 設定チェック
+        log_success ".env file already exists."
         if grep -q "your_username" .env; then
-            log_warn ".envファイルで認証情報を設定してください"
+            log_warn "Please set authentication info in .env file."
         fi
     fi
 }
